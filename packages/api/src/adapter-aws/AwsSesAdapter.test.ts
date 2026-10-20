@@ -114,6 +114,23 @@ describe('AwsSesAdapter', () => {
         })
     })
 
+    test.each(['', ' \t '])('preserves an explicit blank subject %j instead of the MIME subject', async (subject) => {
+        const raw = Buffer.from([
+            'From: sender@example.test', 'To: recipient@example.test', 'Subject: MIME subject',
+            'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', '', 'Raw body',
+        ].join('\r\n')).toString('base64')
+        const adapter = new AwsSesAdapter('http://floci.test', async () => jsonResponse({messages: [{
+            Id: 'explicit-blank-subject', Subject: subject, RawData: raw,
+        }]}))
+
+        const message = await adapter.get('explicit-blank-subject')
+        if (!message) throw new Error('Expected the captured raw message')
+
+        expect(message).toMatchObject({name: '(no subject)', metadata: {rawData: raw}})
+        expect(await adapter.list()).toEqual([message])
+        expect(await adapter.list({search: 'MIME subject'})).toEqual([])
+    })
+
     test('keeps raw data inspectable and the rest of the mailbox available after a parser rejection', async () => {
         const oversized = Buffer.from('Subject: ' + 'x'.repeat(129 * 1024) + '\r\n\r\nBody').toString('base64')
         const valid = Buffer.from('Subject: Still visible\r\n\r\nValid body').toString('base64')

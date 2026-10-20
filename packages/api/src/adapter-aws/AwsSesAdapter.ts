@@ -119,7 +119,7 @@ async function messageToResource(message: FlociSesMessage): Promise<CloudResourc
     }
     return {
         id,
-        name: message.Subject?.trim() || parsed?.subject?.trim() || '(no subject)',
+        name: (message.Subject ?? parsed?.subject)?.trim() || '(no subject)',
         cloud: 'aws',
         service: 'email',
         type: 'email',
